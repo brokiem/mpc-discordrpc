@@ -1,4 +1,5 @@
 # MPC-DiscordRPC
+**Anime version of the original MPC-DiscordRPC**<br>
 Discord Rich Presence for Media Player Classic (Home Cinema and Black Edition)
 
 ![Media Player Classic Home Cinema and Black Edition Rich Presence on Discord small profile](https://i.imgur.com/QAAJZgL.png)

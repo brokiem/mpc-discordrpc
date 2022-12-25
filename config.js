@@ -4,6 +4,9 @@
 // Default: 13579
 exports.port = 13579
 
+// Your MyAnimeList Client ID.
+exports.malClientId = ""
+
 // Whether to omit brackets [] and its content in filenames.
 // Default: true
 exports.ignoreBrackets = true

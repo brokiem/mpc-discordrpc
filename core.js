@@ -1,13 +1,15 @@
 const log = require('fancy-log'),
     jsdom = require('jsdom'),
-    { 
-        ignoreBrackets, 
-        ignoreFiletype, 
-        replaceUnderscore, 
-        showRemainingTime,  
+    {
+        malClientId,
+        ignoreBrackets,
+        ignoreFiletype,
+        replaceUnderscore,
+        showRemainingTime,
         replaceDots,
     } = require('./config'),
-    { JSDOM } = jsdom;
+    { JSDOM } = jsdom,
+    fetch = require("node-fetch");
 
 // Discord Rich Presence has a string length limit of 128 characters.
 // This little plugin (based on https://stackoverflow.com/a/43006978/7090367)
@@ -50,15 +52,10 @@ const states = {
 
 /**
  * Sends Rich Presence updates to Discord client.
- * @param {AxiosResponse} res Response from MPC Web Interface variables page
- * @param {RPCClient} rpc Discord Client RPC connection instance
  */
-const updatePresence = (res, rpc) => {
-    // Identifies which MPC fork is running.
-    const mpcFork = res.headers.server.replace(' WebServer', '');
-
+const updatePresence = async (res, rpc) => {
     // Gets a DOM object based on MPC Web Interface variables page.
-    const { document } = new JSDOM(res.data).window;
+    const { document } = new JSDOM(res).window;
 
     // Gets relevant info from the DOM object.
     let filename = playback.filename = document.getElementById('filepath').textContent.split("\\").pop().trimStr(128);
@@ -69,33 +66,35 @@ const updatePresence = (res, rpc) => {
     // Replaces underscore characters to space characters
     if (replaceUnderscore) playback.filename = playback.filename.replace(/_/g, " ");
 
-	// Removes brackets and its content from filename if `ignoreBrackets` option
-	// is set to true
+    // Removes brackets and its content from filename if `ignoreBrackets` option
+    // is set to true
     if (ignoreBrackets) {
-        playback.filename = playback.filename.replace(/ *\[[^\]]*\]/g, "").trimStr(128);
-        if (playback.filename.substr(0, playback.filename.lastIndexOf(".")).length == 0) playback.filename = filename;
+        playback.filename = playback.filename.replace(/ *\[[^\]]*]/g, "").trimStr(128);
+        if (cleanFormat(playback.filename).length === 0) playback.filename = filename;
     }
-	
+
     // Replaces dots in filenames to space characters
     // Solution found at https://stackoverflow.com/a/28673744
     if (replaceDots) {
         playback.filename = playback.filename.replace(/[.](?=.*[.])/g, " ");
     }
 
-	// Removes filetype from displaying
-	if (ignoreFiletype) playback.filename = playback.filename.substr(0, playback.filename.lastIndexOf("."));
+    // Removes filetype from displaying
+    if (ignoreFiletype) playback.filename = cleanFormat(playback.filename);
+    const cleanedFilename = cleanFormat(playback.filename);
 
     // Prepares playback data for Discord Rich Presence.
     let payload = {
-        state: playback.duration + ' total',
         startTimestamp: undefined,
         endTimestamp: undefined,
-        details: playback.filename,
-        largeImageKey: mpcFork === 'MPC-BE' ? 'mpcbe_logo' : 'default',
-        largeImageText: mpcFork,
-        smallImageKey: states[playback.state].stateKey,
-        smallImageText: states[playback.state].string
+        details: `Watching ${cleanedFilename.length > 20 ? cleanFormat(cleanedFilename.substring(0, 20), ' ') + '-' : cleanedFilename}`,
+        largeImageKey: await getAnimeCoverURI(cleanedFilename),
+        largeImageText: cleanedFilename
     };
+
+    if (cleanedFilename.length > 20) {
+        payload.state = cleanedFilename.substring(20, cleanedFilename.length);
+    }
 
     // Makes changes to payload data according to playback state.
     switch (playback.state) {
@@ -136,6 +135,32 @@ const updatePresence = (res, rpc) => {
     return true;
 };
 
+const getAnimeCoverURI = async (title) => {
+    let uri = "anime-questionmark-removebg";
+
+    const headers = new fetch.Headers();
+    headers.append('X-MAL-CLIENT-ID', malClientId.length <= 0 ? process.env.MAL_CLIENT_ID : malClientId);
+
+    const requestOptions = {
+        method: 'GET',
+        headers: headers,
+        redirect: 'follow'
+    };
+
+    try {
+        const response = await fetch(`https://api.myanimelist.net/v2/anime?q=${title}&limit=1`, requestOptions);
+        const result = await response.json();
+
+        uri = result.data[0].node.main_picture.medium
+    } catch (e) {}
+
+    return uri
+}
+
+const cleanFormat = (string, cleaned = '.') => {
+    return string.substr(0, string.lastIndexOf(cleaned));
+}
+
 /**
  * Simple and quick utility to convert time from 'hh:mm:ss' format to milliseconds.
  * @param {string} time Time string formatted as 'hh:mm:ss'
@@ -150,7 +175,7 @@ const convert = time => {
 };
 
 /**
- * In case the given 'hh:mm:ss' formatted time string is less than 1 hour, 
+ * In case the given 'hh:mm:ss' formatted time string is less than 1 hour,
  * removes the '00' hours from it.
  * @param {string} time Time string formatted as 'hh:mm:ss'
  * @returns {string} Time string without '00' hours

@@ -1,13 +1,13 @@
 const log = require('fancy-log');
 
-log.info('INFO: Loading...');
+log.info('INFO: Starting MPC-HC Discord RPC...');
 
-const axios = require('axios').default,
+const fetch = require('node-fetch'),
 	{ Client } = require('discord-rpc'),
 	updatePresence = require('./core'),
 	events = require('events'),
 	config = require('./config'),
-	clientId = '427863248734388224';
+	clientId = '1056567737721307246';
 
 let mediaEmitter = new events.EventEmitter(),
 	active = false,
@@ -22,7 +22,7 @@ if (isNaN(config.port)) {
 
 const uri = `http://127.0.0.1:${config.port}/variables.html`;
 
-log.info('INFO: Fully ready. Trying to connect to Discord client...');
+log.info('INFO: Trying to connect to Discord client...');
 
 // When it succesfully connects to MPC Web Interface, it begins checking MPC
 // every 5 seconds, getting its playback data and sending it to Discord Rich Presence
@@ -31,7 +31,7 @@ mediaEmitter.on('CONNECTED', res => {
 	clearInterval(mpcServerLoop);
 	mpcServerLoop = setInterval(checkMPCEndpoint, 5000);
 	if (!active) {
-		log.info(`INFO: Connected to ${res.headers.server}`);
+		log.info(`INFO: Connected to MPC Web Interface on port ${config.port}.`);
 	}
 	active = updatePresence(res, rpc);
 });
@@ -72,7 +72,8 @@ mediaEmitter.on('discordDisconnected', () => {
 // Tries to connect to MPC Web Interface and,
 // if connected, fetches its data.
 function checkMPCEndpoint() {
-	axios.get(uri)
+	fetch(uri)
+		.then((response) => response.text())
 		.then(res => {
 			mediaEmitter.emit('CONNECTED', res);
 		})
