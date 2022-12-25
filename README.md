@@ -2,7 +2,7 @@
 **Anime version of the original MPC-DiscordRPC**<br>
 Discord Rich Presence for Media Player Classic (Home Cinema and Black Edition)
 
-![Media Player Classic Home Cinema and Black Edition Rich Presence on Discord small profile](https://i.imgur.com/QAAJZgL.png)
+![Media Player Classic Home Cinema and Black Edition Rich Presence on Discord small profile](https://media.discordapp.net/attachments/868112126139564154/1056625010514600017/image.png)
 
 ## How does this work?
 This program simply fetches playback data from MPC-HC / MPC-BE Web Interface, and displays it in your Discord profile through their wonderful [Rich Presence](https://discordapp.com/rich-presence) API.
