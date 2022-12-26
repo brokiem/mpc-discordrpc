@@ -83,13 +83,15 @@ const updatePresence = async (res, rpc) => {
     if (ignoreFiletype) playback.filename = cleanFormat(playback.filename);
     const cleanedFilename = cleanFormat(playback.filename);
 
+    const animeDetails = await getAnimeDetails(cleanedFilename);
+
     // Prepares playback data for Discord Rich Presence.
     let payload = {
         startTimestamp: undefined,
         endTimestamp: undefined,
         details: `Watching ${cleanedFilename.length > 20 ? cleanFormat(cleanedFilename.substring(0, 20), ' ') + '-' : cleanedFilename}`,
-        largeImageKey: await getAnimeCoverURI(cleanedFilename),
-        largeImageText: cleanedFilename
+        largeImageKey: animeDetails.cover_image,
+        largeImageText: animeDetails.title === null ? cleanedFilename : animeDetails.title,
     };
 
     if (cleanedFilename.length > 20) {
@@ -135,8 +137,11 @@ const updatePresence = async (res, rpc) => {
     return true;
 };
 
-const getAnimeCoverURI = async (title) => {
-    let uri = "anime-questionmark-removebg";
+const getAnimeDetails = async (title) => {
+    const details = {
+        cover_image: 'anime-questionmark-removebg',
+        title: null,
+    };
 
     const headers = new fetch.Headers();
     headers.append('X-MAL-CLIENT-ID', malClientId.length <= 0 ? process.env.MAL_CLIENT_ID : malClientId);
@@ -151,10 +156,11 @@ const getAnimeCoverURI = async (title) => {
         const response = await fetch(`https://api.myanimelist.net/v2/anime?q=${title}&limit=1`, requestOptions);
         const result = await response.json();
 
-        uri = result.data[0].node.main_picture.medium
+        details.cover_image = result.data[0].node.main_picture.large;
+        details.title = result.data[0].node.title;
     } catch (e) {}
 
-    return uri
+    return details
 }
 
 const cleanFormat = (string, cleaned = '.') => {
